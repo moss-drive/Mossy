@@ -1,4 +1,4 @@
-![License: GPL](https://img.shields.io/badge/license-GPLv3-blue)![Version Badge](https://img.shields.io/badge/version-0.0.1-lightgrey.svg)
+![License: GPL](https://img.shields.io/badge/license-GPLv3-blue)![Version Badge](https://img.shields.io/badge/version-0.0.2-lightgrey.svg)
 # Mossy
 
 ## Install

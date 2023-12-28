@@ -5,3 +5,8 @@ hardhat.config.ts
 tasks/
 tests/
 !types/
+deploy/
+scripts/
+test/
+artifacts/
+cache/
