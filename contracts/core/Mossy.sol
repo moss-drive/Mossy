@@ -183,8 +183,9 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	function tokenURI(uint256 id) public view override returns (string memory) {
 		Phase phase = getPhase();
 		if (phase != Phase.FudingEnded) {
-			return "ipfs://bafkreifwiktc7m57ywsjfp5gevy3i67qtogj5dbjw5qr3vgtm2bx7u7bgm";
+			return "ipfs://bafkreif3uzwdn52tasg7gbb5izsx6p32qbm5zqhtw7n3v4mhheojiuiiqq";
 		}
+		require(address(descriptor) != address(0), "Mossy: No NFT descriptor");
 		string memory name = string.concat("@Mossy-", Strings.toString(id));
 		string memory image = descriptor.getImageData(token2Metas[id]);
 		string memory json = string(abi.encodePacked('{"name":"', name, '","description":"', name, '","image_data":"', image, '"}'));

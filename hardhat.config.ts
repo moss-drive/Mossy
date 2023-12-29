@@ -65,10 +65,10 @@ const config = {
 			timeout: 100000
 		},
 		hardhat: {
-			forking: {
-				enabled: true,
-				url: process.env.MAINNET,
-			},
+			// forking: {
+			// 	enabled: true,
+			// 	url: process.env.MAINNET,
+			// },
 			accounts,
 			gas: 'auto',
 			gasPrice: 'auto',

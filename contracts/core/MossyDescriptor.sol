@@ -41,13 +41,13 @@ contract MossyDescriptor {
 	}
 
 	function getImageData(uint256 metaId) public view returns (string memory data) {
-		string memory head = '<svg width="1000" height="1000" viewBox="0 0 1000 1000" fill="none" xmlns="http://www.w3.org/2000/svg">';
+		string memory head = "<svg width='1000' height='1000' viewBox='0 0 1000 1000' fill='none' xmlns='http://www.w3.org/2000/svg'>";
 		string memory tail = "</svg>";
 		data = head;
 		for (uint8 i = 0; i < _pctDistribs.length; i++) {
 			string memory component = Strings.toString(i);
 			string memory part = Strings.toString(getPartOf(metaId, i));
-			data = string.concat(data, '<image href="', rootURI, "/", component, "/", part, '.svg" />');
+			data = string.concat(data, "<image href='", rootURI, "/", component, "/", part, ".svg' />");
 		}
 		data = string.concat(data, tail);
 	}
