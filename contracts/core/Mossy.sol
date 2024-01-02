@@ -16,13 +16,13 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	uint64 public fundingEnd;
 
 	// uint32 public constant maxFree = 500;
-	uint32 public constant maxFree = 30;
+	uint32 public constant maxFree = 10;
 
 	// uint32 public maxPhaseOne = 3500;
-	uint32 public maxPhaseOne = 50;
+	uint32 public maxPhaseOne = 5;
 
 	// uint32 public constant maxPhaseTwo = 5999;
-	uint32 public constant maxPhaseTwo = 60;
+	uint32 public constant maxPhaseTwo = 5;
 	uint32 public freeSold = 0;
 	uint32 public phaseOneSold = 0;
 	uint32 public phaseTwoSold = 0;
