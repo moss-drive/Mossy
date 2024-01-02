@@ -56,7 +56,12 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
 
 	modifier onlyHoldOne() {
-		require(balanceOf(msg.sender) == 0, "One can hold one token");
+		require(balanceOf(msg.sender) == 0, "One can only hold one token");
+		_;
+	}
+
+	modifier mintingEnded() {
+		require(getPhase() == Phase.FudingEnded, "Minting is not ending");
 		_;
 	}
 
@@ -203,6 +208,18 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 		} else {
 			coin.transfer(to, value);
 		}
+	}
+
+	function transferFrom(address from, address to, uint256 tokenId) public override(ERC721Upgradeable, IERC721Upgradeable) mintingEnded {
+		super.transferFrom(from, to, tokenId);
+	}
+
+	function safeTransferFrom(address from, address to, uint256 tokenId) public virtual override(ERC721Upgradeable, IERC721Upgradeable) mintingEnded {
+		super.safeTransferFrom(from, to, tokenId);
+	}
+
+	function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public override(ERC721Upgradeable, IERC721Upgradeable) mintingEnded {
+		super.safeTransferFrom(from, to, tokenId, data);
 	}
 
 	receive() external payable {}
