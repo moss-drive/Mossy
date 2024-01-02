@@ -23,9 +23,9 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 
 	// uint32 public constant maxPhaseTwo = 5999;
 	uint32 public constant maxPhaseTwo = 5;
-	uint32 public freeSold = 0;
-	uint32 public phaseOneSold = 0;
-	uint32 public phaseTwoSold = 0;
+	uint32 public freeSold;
+	uint32 public phaseOneSold;
+	uint32 public phaseTwoSold;
 	uint32 internal nonce;
 	bool internal phaseUpdated;
 	uint64 public constant phaseOneFee = 5e15;
@@ -86,7 +86,7 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	}
 
 	function open(IMossyDescriptor _descriptor) external onlyOwner {
-		require(getPhase() == Phase.FudingEnded || nonce == maxFree + maxPhaseOne + maxPhaseTwo - 1, "Minting is not ended");
+		require(getPhase() == Phase.FudingEnded, "Minting is not ended");
 		descriptor = _descriptor;
 		emit BatchMetadataUpdate(0, nonce);
 	}
@@ -220,6 +220,19 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 
 	function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public override(ERC721Upgradeable, IERC721Upgradeable) mintingEnded {
 		super.safeTransferFrom(from, to, tokenId, data);
+	}
+
+	function fundingPhase() public view returns (uint8) {
+		if (getPhase() != Phase.FundingStarted) {
+			return 0;
+		}
+		if (phaseOneSold < maxPhaseOne) {
+			return 1;
+		}
+		if (phaseTwoSold < maxPhaseTwo) {
+			return 2;
+		}
+		return 3;
 	}
 
 	receive() external payable {}
