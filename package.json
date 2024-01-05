@@ -1,6 +1,6 @@
 {
 	"name": "@moss-hub/mossy",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"description": "mossy contracts for typescript",
 	"main": "./types/index.js",
 	"types": "./types/index.ts",

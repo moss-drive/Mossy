@@ -12,17 +12,17 @@ import "../libraries/Strings.sol";
 contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 	uint64 public freeStart;
 	uint64 public freeEnd;
-	uint64 public fundingStart;
-	uint64 public fundingEnd;
 
-	// uint32 public constant maxFree = 500;
-	uint32 public constant maxFree = 10;
+	uint32 public devReserve = 500;
 
-	// uint32 public maxPhaseOne = 3500;
+	// uint32 public constant MAXFREE = 300;
+	uint32 public constant MAXFREE = 10;
+
+	// uint32 public maxPhaseOne = 3199;
 	uint32 public maxPhaseOne = 5;
 
-	// uint32 public constant maxPhaseTwo = 5999;
-	uint32 public constant maxPhaseTwo = 5;
+	// uint32 public constant MAXPHASETWO = 6000;
+	uint32 public constant MAXPHASETWO = 5;
 	uint32 public freeSold;
 	uint32 public phaseOneSold;
 	uint32 public phaseTwoSold;
@@ -31,18 +31,22 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	uint64 public constant phaseOneFee = 5e15;
 	uint64 public constant phaseTwoFee = 1e16;
 
+	uint32 internal totalSales;
+
 	IMossyDescriptor internal descriptor;
+
+	uint32 internal constant MAXSALEPERADDR = 5;
 
 	mapping(uint256 => uint256) public token2Metas;
 
 	mapping(address => bool) internal wl;
+	mapping(address => uint32) public sales;
 
 	enum Phase {
-		FreeNotStarted,
+		NotStarted,
 		FreeStarted,
-		FreeEndedAndFundingNotStarted,
 		FundingStarted,
-		FudingEnded
+		SoldOut
 	}
 
 	/// @dev This event emits when the metadata of a token is changed.
@@ -55,38 +59,98 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	/// timely update the images and related attributes of the NFTs.
 	event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
 
-	modifier onlyHoldOne() {
-		require(balanceOf(msg.sender) == 0, "One can only hold one token");
-		_;
-	}
-
-	modifier mintingEnded() {
-		require(getPhase() == Phase.FudingEnded, "Minting is not ending");
-		_;
-	}
-
-	function initialize(address admin, uint64 _freeStart, uint64 _freeEnd, uint64 _fundingStart, uint64 _fundingEnd) external initializer {
+	function initialize(address admin, uint64 _freeStart, uint64 _freeEnd) external initializer {
 		require(_freeStart >= block.timestamp);
 		require(_freeStart < _freeEnd);
-		require(_freeEnd <= _fundingStart);
-		require(_fundingStart < _fundingEnd);
 		_transferOwnership(admin);
+		devReserve = 500;
 		maxPhaseOne = 3500;
+		totalSales = MAXFREE + maxPhaseOne + MAXPHASETWO;
 		freeStart = _freeStart;
 		freeEnd = _freeEnd;
-		fundingStart = _fundingStart;
-		fundingEnd = _fundingEnd;
 	}
 
-	function updateTime(uint64 _freeStart, uint64 _freeEnd, uint64 _fundingStart, uint64 _fundingEnd) external onlyOwner {
+	function updateTime(uint64 _freeStart, uint64 _freeEnd) external onlyOwner {
 		freeStart = _freeStart;
 		freeEnd = _freeEnd;
-		fundingStart = _fundingStart;
-		fundingEnd = _fundingEnd;
+	}
+
+	function devMint(address to, uint32 amount) external onlyOwner {
+		require(devReserve >= amount, "Mossy: No reserve for dev");
+		for (uint256 i = 0; i < amount; i++) {
+			_mintToken(to);
+		}
+		devReserve = devReserve - amount;
+	}
+
+	function mint() external payable nonReentrant {
+		Phase phase = getPhase();
+		if (phase == Phase.NotStarted) {
+			revert("free minting is not open");
+		}
+
+		if (phase == Phase.SoldOut) {
+			revert("all tokens sold out");
+		}
+
+		address minter = msg.sender;
+		if (phase == Phase.FreeStarted) {
+			// free mint
+			_freeMint(minter);
+		}
+
+		if (phase == Phase.FundingStarted) {
+			// funding mint
+			_fundingMint(minter);
+		}
+	}
+
+	function _freeMint(address minter) internal {
+		require(balanceOf(minter) == 0, "one can only hold one token");
+		require(wl[minter], "caller is not in white list");
+		require(freeSold < MAXFREE, "free minting has been sold out");
+		freeSold++;
+		_mintToken(minter);
+	}
+
+	function _fundingMint(address minter) internal {
+		require(sales[minter] < MAXSALEPERADDR, "minting exceeds the limit");
+		if (!phaseUpdated) {
+			phaseUpdated = true;
+			maxPhaseOne = maxPhaseOne + MAXFREE - freeSold;
+		}
+		if (phaseOneSold < maxPhaseOne) {
+			require(msg.value >= phaseOneFee, "insufficient funds to mint at phase one");
+			if (msg.value > phaseOneFee) {
+				_transferFunds(minter, msg.value - phaseOneFee, "transfer back failed at phase one");
+			}
+			phaseOneSold++;
+		} else if (phaseTwoSold < MAXPHASETWO) {
+			require(msg.value >= phaseTwoFee, "insufficient funds to mint at phase two");
+			if (msg.value > phaseTwoFee) {
+				_transferFunds(minter, msg.value - phaseTwoFee, "transfer back failed at phase two");
+			}
+			phaseTwoSold++;
+		} else {
+			revert("all tokens sold out");
+		}
+		sales[minter]++;
+		_mintToken(minter);
+	}
+
+	function _mintToken(address minter) internal {
+		uint256 metaId = _getMetaId(minter, nonce, block.number);
+		token2Metas[nonce] = metaId;
+		_mint(minter, nonce);
+		nonce++;
+	}
+
+	function _getMetaId(address minter, uint256 _nonce, uint256 _blockNumber) internal pure returns (uint256) {
+		return uint256(keccak256(abi.encodePacked(minter, _nonce, _blockNumber)));
 	}
 
 	function open(IMossyDescriptor _descriptor) external onlyOwner {
-		require(getPhase() == Phase.FudingEnded, "Minting is not ended");
+		require(address(descriptor) == address(0), "desciptor exists");
 		descriptor = _descriptor;
 		emit BatchMetadataUpdate(0, nonce);
 	}
@@ -99,98 +163,24 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 
 	function getPhase() public view returns (Phase) {
 		if (block.timestamp < freeStart) {
-			return Phase.FreeNotStarted;
+			return Phase.NotStarted;
 		}
 
 		if (block.timestamp < freeEnd) {
 			return Phase.FreeStarted;
 		}
 
-		if (block.timestamp < fundingStart) {
-			return Phase.FreeEndedAndFundingNotStarted;
+		if (freeSold + phaseOneSold + phaseTwoSold == totalSales) {
+			return Phase.SoldOut;
 		}
 
-		if (block.timestamp < fundingEnd) {
-			return Phase.FundingStarted;
-		}
-
-		return Phase.FudingEnded;
-	}
-
-	function mint() external payable onlyHoldOne nonReentrant {
-		Phase phase = getPhase();
-		if (phase == Phase.FreeNotStarted) {
-			revert("Free minting is not open");
-		}
-
-		if (phase == Phase.FreeEndedAndFundingNotStarted) {
-			revert("Funding minting is not open");
-		}
-
-		if (phase == Phase.FudingEnded) {
-			revert("Minting is closed");
-		}
-
-		address minter = msg.sender;
-		if (phase == Phase.FreeStarted) {
-			// free mint
-			require(wl[minter], "Caller is not in white list");
-			_freeMint(minter);
-		}
-
-		if (phase == Phase.FundingStarted) {
-			// funding mint
-			_fundingMint(minter);
-		}
-		nonce++;
-	}
-
-	function _freeMint(address minter) internal {
-		require(balanceOf(minter) == 0, "One can hold one token");
-		require(freeSold < maxFree, "Free minting has been sold out");
-		freeSold++;
-		_mintToken(minter, nonce);
-	}
-
-	function _fundingMint(address minter) internal {
-		if (!phaseUpdated) {
-			phaseUpdated = true;
-			maxPhaseOne = maxPhaseOne + maxFree - freeSold;
-		}
-		if (phaseOneSold < maxPhaseOne) {
-			require(msg.value >= phaseOneFee, "insufficient funds to mint");
-			if (msg.value > phaseOneFee) {
-				_transferFunds(minter, msg.value - phaseOneFee, "transfer back failed at phase one");
-			}
-			phaseOneSold++;
-		} else if (phaseTwoSold < maxPhaseTwo) {
-			require(msg.value >= phaseTwoFee, "insufficient funds to mint");
-			if (msg.value > phaseTwoFee) {
-				_transferFunds(minter, msg.value - phaseTwoFee, "transfer back failed at phase two");
-			}
-			phaseTwoSold++;
-		} else {
-			revert("All tokens sold out");
-		}
-		_mintToken(minter, nonce);
-	}
-
-	function _mintToken(address minter, uint256 _nonce) internal {
-		uint256 metaId = _getMetaId(minter, _nonce, block.number);
-		token2Metas[_nonce] = metaId;
-		_mint(minter, _nonce);
-	}
-
-	function _getMetaId(address minter, uint256 _nonce, uint256 _blockNumber) internal pure returns (uint256) {
-		return uint256(keccak256(abi.encodePacked(minter, _nonce, _blockNumber)));
+		return Phase.FundingStarted;
 	}
 
 	function tokenURI(uint256 id) public view override returns (string memory) {
-		Phase phase = getPhase();
-		if (phase != Phase.FudingEnded) {
+		if (address(descriptor) == address(0)) {
 			return "ipfs://bafkreif3uzwdn52tasg7gbb5izsx6p32qbm5zqhtw7n3v4mhheojiuiiqq";
 		}
-		require(address(descriptor) != address(0), "Mossy: No NFT descriptor");
 		string memory name = string.concat("@Mossy-", Strings.toString(id));
 		string memory image = descriptor.getImageData(token2Metas[id]);
 		string memory json = string(abi.encodePacked('{"name":"', name, '","description":"', name, '","image_data":"', image, '"}'));
@@ -210,18 +200,6 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 		}
 	}
 
-	function transferFrom(address from, address to, uint256 tokenId) public override(ERC721Upgradeable, IERC721Upgradeable) mintingEnded {
-		super.transferFrom(from, to, tokenId);
-	}
-
-	function safeTransferFrom(address from, address to, uint256 tokenId) public virtual override(ERC721Upgradeable, IERC721Upgradeable) mintingEnded {
-		super.safeTransferFrom(from, to, tokenId);
-	}
-
-	function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public override(ERC721Upgradeable, IERC721Upgradeable) mintingEnded {
-		super.safeTransferFrom(from, to, tokenId, data);
-	}
-
 	function fundingPhase() public view returns (uint8) {
 		if (getPhase() != Phase.FundingStarted) {
 			return 0;
@@ -229,7 +207,7 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 		if (phaseOneSold < maxPhaseOne) {
 			return 1;
 		}
-		if (phaseTwoSold < maxPhaseTwo) {
+		if (phaseTwoSold < MAXPHASETWO) {
 			return 2;
 		}
 		return 3;
