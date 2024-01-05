@@ -19,7 +19,7 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	uint32 public constant MAXFREE = 10;
 
 	// uint32 public maxPhaseOne = 3199;
-	uint32 public maxPhaseOne = 5;
+	uint32 public maxPhaseOne;
 
 	// uint32 public constant MAXPHASETWO = 6000;
 	uint32 public constant MAXPHASETWO = 5;
@@ -64,7 +64,7 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 		require(_freeStart < _freeEnd);
 		_transferOwnership(admin);
 		devReserve = 500;
-		maxPhaseOne = 3500;
+		maxPhaseOne = 5;
 		totalSales = MAXFREE + maxPhaseOne + MAXPHASETWO;
 		freeStart = _freeStart;
 		freeEnd = _freeEnd;
