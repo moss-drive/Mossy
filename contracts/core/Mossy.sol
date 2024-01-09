@@ -142,7 +142,7 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 	}
 
 	function open(IMossyDescriptor _descriptor) external onlyOwner {
-		require(address(descriptor) == address(0), "desciptor exists");
+		require(address(descriptor) == address(0), "Mossy: descriptor exists");
 		descriptor = _descriptor;
 		emit BatchMetadataUpdate(0, nonce);
 	}
@@ -171,7 +171,7 @@ contract Mossy is ERC721EnumerableUpgradeable, OwnableUpgradeable, ReentrancyGua
 
 	function tokenURI(uint256 id) public view override returns (string memory) {
 		if (address(descriptor) == address(0)) {
-			return "ipfs://bafkreif3uzwdn52tasg7gbb5izsx6p32qbm5zqhtw7n3v4mhheojiuiiqq";
+			return "ipfs://bafkreihrjvxaiwgzq7giq6e2f3bvdgezeylrfzbwgeak5fn74gfuqcmcra";
 		}
 		string memory name = string.concat("@Mossy-", Strings.toString(id));
 		string memory image = descriptor.getImageData(token2Metas[id]);
