@@ -47,7 +47,7 @@ contract MossyDescriptor {
 		for (uint8 i = 0; i < _pctDistribs.length; i++) {
 			string memory component = Strings.toString(i);
 			string memory part = Strings.toString(getPartOf(metaId, i));
-			data = string.concat(data, "<image href='", rootURI, "/", component, "/", part, ".svg' />");
+			data = string.concat(data, "<image width='1000' height='1000' href='", rootURI, "/", component, "/", part, ".svg' />");
 		}
 		data = string.concat(data, tail);
 	}
