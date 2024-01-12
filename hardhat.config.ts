@@ -133,6 +133,7 @@ const config = {
 			accounts
 		},
 		optimistic: {
+			// url: 'https://rpc.ankr.com/optimism',
 			url: 'https://opt-mainnet.g.alchemy.com/v2/uwFroxk2OBoMpOSrmkuHAOcl1Z_1HQy_',
 			chainId: 10,
 			accounts
